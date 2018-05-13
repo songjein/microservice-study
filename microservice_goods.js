@@ -1,5 +1,6 @@
 'use strict';
 
+const cluster = require('cluster');
 const business = require('./monolithic_goods.js');
 
 class goods extends require('./server.js') {
@@ -24,4 +25,12 @@ class goods extends require('./server.js') {
 	}
 }
 
-new goods();
+if (cluster.isMaster) {
+	cluster.fork();
+	cluster.on('exit', (worker, code, signal) => {
+		console.log(`worker ${worker.process.pid} died`);	
+		cluster.fork();	// 새로운 자식프로세스 실행!
+	});
+} else {
+	new goods();
+}
