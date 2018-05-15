@@ -11,7 +11,7 @@ var mapResponse = {};	// 마이크로서비스로부터 응답을 얻어 오기 
 var mapRR = {};				// 라운드 로빈을 위한 맵
 var index = 0;
 
-var GATEWAY_PORT = 8000;
+var GATEWAY_PORT = 3000;
 
 var server = http.createServer((req, res) => {
 	var method = req.method;

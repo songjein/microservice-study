@@ -3,8 +3,15 @@ const conn = {
 	host: 'stdio.cqadge8skvwi.ap-northeast-2.rds.amazonaws.com',
 	user: 'micro',
 	password: 'service',
-	database: 'monolithic'
+	database: 'monolithic',
+	multipleStatements: true
 };
+
+const redis = require("redis").createClient();
+
+redis.on("error", (err) => {
+	console.log("Redis Error " + err);
+});
 
 
 // monolithic.js 에서 이 파일의 onRequest를 호출하려면 exports를 해야함
@@ -53,12 +60,19 @@ function register(method, pathname, params, cb) {
 		var connection = mysql.createConnection(conn);
 		connection.connect();
 		connection.query(
-			"insert into goods(name, category, price, description) values(?, ?, ?, ?)"
+			"insert into goods(name, category, price, description) values(?, ?, ?, ?); select LAST_INSERT_ID() as id;"
 			,[params.name, params.category, params.price, params.description]
 			,(error, results, fields) => {
+				console.log("results", results);
+				console.log("fields", fields);
 				if (error) {
 					response.errorcode = 1;
 					response.errormessage = error;
+				} else {
+					// 데이터베이스에 정상 저장 되면, Redis에도 저장
+					const id = results[1][0].id;
+					// key - value 
+					redis.set(id, JSON.stringify(params));
 				}
 				cb(response);
 			});
@@ -87,7 +101,6 @@ function inquiry(method, pathname, params, cb) {
 		if (error || results.length == 0) {
 			response.errorcode = 1;
 			response.errormessage = error ? error : "no data";
-
 		} else {
 			response.results = results;
 		}
@@ -126,6 +139,8 @@ function unregister(method, pathname, params, cb) {
 				if (error) {
 					response.errorcode = 1;
 					response.errormessage = error;
+				} else {
+					redis.del(params.id);	
 				}
 				cb(response);
 			});
